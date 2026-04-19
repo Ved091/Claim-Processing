@@ -5,46 +5,52 @@ from app.services.segregator import segregate_pages
 from app.agents.id_agent import extract_id_data
 from app.agents.discharge_summary_agent import extract_discharge_data
 from app.agents.itemized_bill_agent import extract_bill_data
-from app.agents.aggregator import aggregate
 
 
 def segregator_node(state: GraphState):
-    state.document_map = segregate_pages(state.pages)
-    return state
+    return {"document_map": segregate_pages(state["pages"])}
 
 
 def id_node(state: GraphState):
     pages = [
-        state.pages[i]
-        for i, t in state.document_map.items()
+        state["pages"][i]
+        for i, t in state["document_map"].items()
         if t == "identity_document"
     ]
-    state.id_data = extract_id_data(pages)
-    return state
+    return {"id_data": extract_id_data(pages)}
 
 
 def discharge_node(state: GraphState):
     pages = [
-        state.pages[i]
-        for i, t in state.document_map.items()
+        state["pages"][i]
+        for i, t in state["document_map"].items()
         if t == "discharge_summary"
     ]
-    state.discharge_data = extract_discharge_data(pages)
-    return state
+    return {"discharge_data": extract_discharge_data(pages)}
 
 
 def bill_node(state: GraphState):
     pages = [
-        state.pages[i]
-        for i, t in state.document_map.items()
+        state["pages"][i]
+        for i, t in state["document_map"].items()
         if t == "itemized_bill"
     ]
-    state.bill_data = extract_bill_data(pages)
-    return state
+    return {"bill_data": extract_bill_data(pages)}
 
 
 def aggregator_node(state: GraphState):
-    return aggregate(state)
+    return {
+        "final_output": {
+            "claim_id": state["claim_id"],
+            "document_map": state["document_map"],
+            "extracted_data": {
+                "identity": state.get("id_data", {}),
+                "discharge_summary": state.get("discharge_data", {}),
+                "itemized_bill": state.get("bill_data", {})
+            },
+            "status": "success"
+        }
+    }
 
 
 def build_graph():
@@ -75,11 +81,16 @@ graph = build_graph()
 
 
 def run_workflow(claim_id, pages):
-    state = GraphState(
-        claim_id=claim_id,
-        pages=pages
-    )
+    state = {
+        "claim_id": claim_id,
+        "pages": pages,
+        "document_map": {},
+        "id_data": {},
+        "discharge_data": {},
+        "bill_data": {},
+        "final_output": {}
+    }
 
     result = graph.invoke(state)
 
-    return result.final_output
+    return result["final_output"]

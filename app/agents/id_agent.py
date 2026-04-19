@@ -5,7 +5,6 @@ import json
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-
 def extract_id_data(pages):
     if not pages:
         return {}
